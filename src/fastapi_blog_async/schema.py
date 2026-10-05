@@ -3,6 +3,11 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 class UserBase(BaseModel):
     username: str = Field(min_length=3, max_length=40)
     name: str = Field(max_length=120)
@@ -10,7 +15,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    pass
+    password: str = Field(min_length=6)
 
 
 class UserUpdate(BaseModel):
