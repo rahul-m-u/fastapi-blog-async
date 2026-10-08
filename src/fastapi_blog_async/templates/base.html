@@ -60,16 +60,23 @@
                 </div>
                 <!-- Navbar Right Side -->
                 <div class="navbar-nav">
-                    <!--                    ## New Post Modal for layout.html-->
+                    <div class="d-none" id="loggedInNav">
+                        <button class="btn btn-outline-light mb-2 mb-md-0 me-md-2"
+                                data-bs-target="#createPostModal"
+                                data-bs-toggle="modal"
+                                type="button">New Post
+                        </button>
+                        <a class="btn btn-light mb-2 mb-md-0 me-md-3"
+                           href="{{ url_for('account_page') }}"
+                           id="accountBtn">Account</a>
+                    </div>
                     <!-- NOTE: Once auth is set up, this button will only be visible when logged in -->
-                    <button class="btn btn-outline-light mb-2 mb-md-0 me-md-2"
-                            data-bs-target="#createPostModal"
-                            data-bs-toggle="modal"
-                            type="button">New Post
-                    </button>
-                    <!-- NOTE: Once auth is set up, this button will only be visible when logged in -->
-                    <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2" href="{{ url_for('login_page') }}">Login</a>
-                    <a class="btn btn-light mb-2 mb-md-0 me-md-3" href="{{ url_for('register_page') }}">Register</a>
+                    <div id="loggedOutNav">
+                        <a class="btn btn-outline-light mb-2 mb-md-0 me-md-2"
+                           href="{{ url_for('login_page') }}">Login</a>
+                        <a class="btn btn-light mb-2 mb-md-0 me-md-3"
+                           href="{{ url_for('register_page') }}">Register</a>
+                    </div>
                     <div class="nav-item dropdown">
                         <a aria-expanded="false"
                            class="nav-link dropdown-toggle"
@@ -106,7 +113,7 @@
         <aside class="col-md-4">
             <div class="content-section py-3 px-4 mb-4">
                 <h3>Our Sidebar</h3>
-                <p class="text-body-secondary">You can put any information here you'd like.</p>
+                <p class="text-body-secondary">You can put any information here you\'d like.</p>
                 <ul class="list-group">
                     <li class="list-group-item">Latest Posts</li>
                     <li class="list-group-item">Announcements</li>
@@ -164,7 +171,6 @@
     </div>
 </div>
 
-
 <!-- Success Modal -->
 <div aria-hidden="true"
      aria-labelledby="successModalLabel"
@@ -214,10 +220,11 @@
         </div>
     </div>
 </div>
+</div>
 
 
 <!-- Set the current year in the footer -->
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
 
 <!-- Bootstrap Bundle with Popper -->
 <script crossorigin="anonymous"
@@ -227,26 +234,51 @@
 <!-- Dark Mode Toggle -->
 <script>
     const setTheme = (theme) => {
-        if (theme === 'auto') {
-            document.documentElement.setAttribute('data-bs-theme',
-                window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (theme === "auto") {
+            document.documentElement.setAttribute("data-bs-theme",
+                window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
         } else {
-            document.documentElement.setAttribute('data-bs-theme', theme);
+            document.documentElement.setAttribute("data-bs-theme", theme);
         }
-        localStorage.setItem('theme', theme);
+        localStorage.setItem("theme", theme);
 
         // Update button text
-        const themeText = {light: '🌝 Light', dark: '🌚 Dark', auto: '🌗 Auto'};
-        document.getElementById('bd-theme-text').textContent = themeText[theme];
+        const themeText = {light: "🌝 Light", dark: "🌚 Dark", auto: "🌗 Auto"};
+        document.getElementById("bd-theme-text").textContent = themeText[theme];
     };
 
     // Set theme on click
-    document.querySelectorAll('[data-bs-theme-value]').forEach(button => {
-        button.addEventListener('click', () => setTheme(button.getAttribute('data-bs-theme-value')));
+    document.querySelectorAll("[data-bs-theme-value]").forEach(button => {
+        button.addEventListener("click", () => setTheme(button.getAttribute("data-bs-theme-value")));
     });
 
     // Initialize
-    setTheme(localStorage.getItem('theme') || 'auto');
+    setTheme(localStorage.getItem("theme") || "auto");
+</script>
+
+<script type="module">
+    import {getCurrentUser} from "/static/js/auth.js";
+
+    async function updateAuthUI() {
+        const user = await getCurrentUser();
+        const loggedInNav = document.getElementById("loggedInNav");
+        const loggedOutNav = document.getElementById("loggedOutNav");
+        const accountBtn = document.getElementById("accountBtn");
+
+        if (user) {
+            loggedInNav.classList.remove('d-none');
+            loggedInNav.classList.add('d-flex');
+            loggedOutNav.classList.add('d-none');
+            accountBtn.textContent = user.username;
+        } else {
+            loggedInNav.classList.add('d-none');
+            loggedInNav.classList.remove('d-flex');
+            loggedOutNav.classList.remove('d-none');
+            accountBtn.textContent = 'Account';
+        }
+    }
+
+    updateAuthUI();
 </script>
 
 <script type="module">
@@ -255,19 +287,23 @@
         hideModal,
         showModal,
     } from "/static/js/utils.js";
+    import { getToken } from "/static/js/auth.js";
 
     const createForm = document.getElementById("createPostForm");
 
     createForm.addEventListener("submit", async (event) => {
-        // Stop default form submission - we'll handle it with JavaScript
+        // <!-- Stop default form submission - we will handle it with JavaScript -->
         event.preventDefault();
+
+        const token = getToken();
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
 
         // Gather form values into a plain object {title: "...", content: "..."}
         const formData = new FormData(createForm);
         const postData = Object.fromEntries(formData.entries());
-
-        // TEMPORARY - hardcoded until authorization (Tutorial 11)
-        postData.user_id = 1;
 
         try {
             // POST to our API as JSON
@@ -275,6 +311,7 @@
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify(postData),
             });
@@ -316,34 +353,6 @@
     });
 </script>
 
-<!-- Auth State Management -->
-<script type="module">
-    import {getCurrentUser, logout} from '/static/js/auth.js';
-
-    // Update navbar based on auth state
-    async function updateAuthUI() {
-        const user = await getCurrentUser();
-        const loggedInNav = document.getElementById('loggedInNav');
-        const loggedOutNav = document.getElementById('loggedOutNav');
-
-        if (user) {
-            loggedInNav.classList.remove('d-none');
-            loggedInNav.classList.add('d-flex');
-            loggedOutNav.classList.add('d-none');
-            document.getElementById('usernameDisplay').textContent = user.email;
-        } else {
-            loggedInNav.classList.add('d-none');
-            loggedInNav.classList.remove('d-flex');
-            loggedOutNav.classList.remove('d-none');
-        }
-    }
-
-    // Logout handler
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-
-    // Update UI on page load
-    updateAuthUI();
-</script>
 <!-- Create Post Form Handler -->
 <script type="module">
     import {
@@ -351,19 +360,23 @@
         hideModal,
         showModal,
     } from "/static/js/utils.js";
+    import {getToken} from "../static/js/auth";
 
     const createForm = document.getElementById("createPostForm");
 
     createForm.addEventListener("submit", async (event) => {
-        // Stop default form submission - we'll handle it with JavaScript
+        // Stop default form submission - wev will handle it with JavaScript
         event.preventDefault();
+
+        const token = getToken()
+        if (!token) {
+            window.location.href = "/login";
+            return;
+        }
 
         // Gather form values into a plain object {title: "...", content: "..."}
         const formData = new FormData(createForm);
         const postData = Object.fromEntries(formData.entries());
-
-        // TEMPORARY - hardcoded until authorization (Tutorial 11)
-        postData.user_id = 1;
 
         try {
             // POST to our API as JSON
@@ -371,9 +384,15 @@
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify(postData),
             });
+
+            if (response.status === 401) {
+                window.location.href = "/login"
+                return;
+            }
 
             if (response.ok) {
                 const data = await response.json();
